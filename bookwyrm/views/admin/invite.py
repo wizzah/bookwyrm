@@ -150,13 +150,17 @@ class ManageInviteRequests(View):
             models.InviteRequest, id=request.POST.get("invite-request")
         )
 
-        # only create a new invite if one doesn't exist already (resending)
-        if not invite_request.invite:
+        # only create a new invite if one doesn't exist already (resending) and if the domain is not in the block list
+        invite_request_domain = invite_request.email.split("@")[1]
+        blocked = models.EmailBlocklist.objects.filter(domain=invite_request_domain).exists()
+
+        if not invite_request.invite and not blocked:
             invite_request.invite = models.SiteInvite.objects.create(
                 use_limit=1,
                 user=request.user,
             )
             invite_request.save()
+
         emailing.invite_email(invite_request)
         # pylint: disable=consider-using-f-string
         return redirect(
